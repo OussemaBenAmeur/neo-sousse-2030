@@ -15,9 +15,16 @@ from compiler.lexer import NLLexer
 from compiler.parser import NLParser
 from compiler.semantic_analyzer import SemanticAnalyzer
 from compiler.codegen import SQLCodeGenerator, CompileResult
-from compiler.ambiguity.detector import AmbiguityDetector
 from compiler.ast_nodes import QueryNode
 from compiler.errors import CompilerError, AmbiguityError
+
+try:
+    from compiler.ambiguity.detector import AmbiguityDetector
+
+    _AMBIGUITY_AVAILABLE = True
+except ImportError:
+    AmbiguityDetector = None
+    _AMBIGUITY_AVAILABLE = False
 
 
 @dataclass
@@ -38,7 +45,7 @@ class NLToSQLPipeline:
         self._parser = NLParser()
         self._semantic = SemanticAnalyzer()
         self._codegen = SQLCodeGenerator()
-        self._ambiguity = AmbiguityDetector()
+        self._ambiguity = AmbiguityDetector() if _AMBIGUITY_AVAILABLE else None
 
     def compile(self, query: str) -> PipelineResult:
         """
@@ -59,13 +66,14 @@ class NLToSQLPipeline:
 
         # Stage 4: Ambiguity detection (bonus feature)
         ambiguity_question = None
-        ambiguity_result = self._ambiguity.detect(ast, query)
-        if ambiguity_result:
-            # Raise so the caller (dashboard / tests) can handle the clarification flow
-            raise AmbiguityError(
-                message=ambiguity_result.question,
-                interpretations=ambiguity_result.candidate_sqls,
-            )
+        if self._ambiguity is not None:
+            ambiguity_result = self._ambiguity.detect(ast, query)
+            if ambiguity_result:
+                # Raise so the caller (dashboard / tests) can handle the clarification flow
+                raise AmbiguityError(
+                    message=ambiguity_result.question,
+                    interpretations=ambiguity_result.candidate_sqls,
+                )
 
         # Stage 5: Code generation
         result = self._codegen.generate(ast)

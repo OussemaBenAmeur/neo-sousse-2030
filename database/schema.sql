@@ -2,7 +2,11 @@
 --  Neo-Sousse 2030 — Database Schema (3NF, TimescaleDB)
 -- =============================================================
 
-CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+DO $$ BEGIN
+    CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'TimescaleDB not available, continuing without it';
+END $$;
 
 -- ─── Lookup / reference tables ────────────────────────────────
 
@@ -54,9 +58,13 @@ CREATE TABLE mesures (
     PRIMARY KEY (id, mesure_at)
 );
 
-SELECT create_hypertable('mesures', 'mesure_at',
-    chunk_time_interval => INTERVAL '7 days',
-    if_not_exists => TRUE);
+DO $$ BEGIN
+    PERFORM create_hypertable('mesures', 'mesure_at',
+        chunk_time_interval => INTERVAL '7 days',
+        if_not_exists => TRUE);
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'TimescaleDB hypertable not created, mesures is a regular table';
+END $$;
 
 CREATE INDEX idx_mesures_capteur ON mesures(capteur_id, mesure_at DESC);
 

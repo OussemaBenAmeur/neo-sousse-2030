@@ -162,6 +162,7 @@ class QueryNode:
     groupby: Optional[GroupByClause] = None
     orderby: Optional[OrderByClause] = None
     limit: Optional[LimitClause] = None
+    meta: dict = field(default_factory=dict)  # extra info for codegen (cross-table joins, etc.)
     pos: int = 0
 
     def to_dict(self) -> dict:

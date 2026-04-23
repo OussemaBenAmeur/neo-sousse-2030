@@ -36,4 +36,4 @@ def seed_citoyens():
                 "zone_id": zone_id, "score": score,
             },
         )
-    print("     ✓ 100 citoyens")
+    print("     - 100 citoyens")

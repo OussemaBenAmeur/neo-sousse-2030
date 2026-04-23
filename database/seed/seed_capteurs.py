@@ -90,4 +90,4 @@ def seed_capteurs():
             {"id": c["id"], "state": c["statut"]},
         )
 
-    print(f"     ✓ {len(zones)} zones, {len(TECHNICIENS)} techniciens, 50 capteurs")
+    print(f"     - {len(zones)} zones, {len(TECHNICIENS)} techniciens, 50 capteurs")

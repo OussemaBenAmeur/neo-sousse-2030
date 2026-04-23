@@ -44,7 +44,7 @@ def seed_mesures():
         "WHERE c.statut IN ('ACTIF', 'SIGNALÉ')"
     )
     if not capteurs:
-        print("     ⚠ No active capteurs found, skipping mesures.")
+        print("     ! No active capteurs found, skipping mesures.")
         return
 
     now = datetime.utcnow()
@@ -104,7 +104,7 @@ def seed_mesures():
         _insert_batch(batch)
         rows_inserted += len(batch)
 
-    print(f"     ✓ {rows_inserted:,} mesures inserted")
+    print(f"     - {rows_inserted:,} mesures inserted")
 
 
 def _insert_batch(batch: list[dict]) -> None:

@@ -92,11 +92,11 @@ class NLParser:
             n_tok = self._advance()
             node.intent = TopNIntent(n=int(float(n_tok.value)), pos=n_tok.pos)
 
-        # entity is required unless COUNT has a sub-attribute
+        # A recognized entity is always required after the intent clause.
         if self._match(TokenType.ENTITY):
             node.entity = self._parse_entity_ref()
             node.attributes = self._parse_attribute_list()
-        elif not isinstance(node.intent, CountIntent):
+        else:
             raise ParseError(
                 "Erreur syntaxique : entité attendue (ex: capteurs, interventions).",
                 pos=self._current().pos,
@@ -113,6 +113,15 @@ class NLParser:
 
         if self._match(TokenType.KW_LIMIT):
             node.limit = self._parse_limit()
+
+        # Swallow any trailing contextual tokens that don't fit the grammar
+        # (e.g. "en CO2" where "CO2" is an ATTRIBUTE after ORDER BY)
+        while not self._match(TokenType.EOF):
+            tok = self._current()
+            if tok.type in {TokenType.ATTRIBUTE, TokenType.IDENTIFIER}:
+                self._advance()
+            else:
+                break
 
         self._expect(TokenType.EOF)
         return node
@@ -192,15 +201,23 @@ class NLParser:
         pos = self._current().pos
         left = self._parse_attribute_ref()
         op_tok = self._current()
-        if op_tok.type not in _COMPARATORS:
+
+        if op_tok.type in _COMPARATORS:
+            self._advance()
+            op = _COMPARATORS[op_tok.type]
+            right = self._parse_value()
+        elif op_tok.type in {TokenType.ATTRIBUTE, TokenType.IDENTIFIER,
+                              TokenType.STRING, TokenType.ENTITY}:
+            # Implicit equality: "avec priorité urgente" → priorite = 'urgente'
+            op = "="
+            right = self._parse_value()
+        else:
             raise ParseError(
                 f"Erreur syntaxique : comparateur attendu (est, >, <, supérieur…), "
                 f"trouvé '{op_tok.value}'.",
                 pos=op_tok.pos,
             )
-        self._advance()
-        op = _COMPARATORS[op_tok.type]
-        right = self._parse_value()
+
         return ConditionNode(left=left, op=op, right=right, pos=pos)
 
     def _parse_value(self) -> ValueNode:

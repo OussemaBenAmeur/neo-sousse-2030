@@ -71,4 +71,4 @@ def seed_interventions():
             {"id": inv["id"], "state": inv["statut"]},
         )
 
-    print("     ✓ 60 interventions")
+    print("     - 60 interventions")

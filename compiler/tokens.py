@@ -75,10 +75,15 @@ PHRASE_MAP: dict[str, TokenType] = {
     "calcule la moyenne":      TokenType.INTENT_AVG,
     "la moyenne":              TokenType.INTENT_AVG,
     "les plus":                TokenType.KW_ORDER_DESC,   # "les 5 zones les plus polluées"
+    "le plus":                 TokenType.KW_ORDER_DESC,   # "le trajet le plus économique"
     "groupé par":              TokenType.KW_GROUPBY,
     "trié par":                TokenType.KW_GROUPBY,
     "limité à":                TokenType.KW_LIMIT,
     "au maximum":              TokenType.KW_LIMIT,
+    # Multi-word attributes — kept together so the parser sees one token
+    "score écologique":        TokenType.ATTRIBUTE,
+    "score ecologique":        TokenType.ATTRIBUTE,
+    "score_ecolo":             TokenType.ATTRIBUTE,
 }
 
 # Single-word keywords
@@ -97,6 +102,10 @@ KEYWORD_MAP: dict[str, TokenType] = {
     "quelle":     TokenType.INTENT_SHOW,
     "trouver":    TokenType.INTENT_SHOW,
     "obtenir":    TokenType.INTENT_SHOW,
+    "donne-moi":  TokenType.INTENT_SHOW,
+    "donnes-moi": TokenType.INTENT_SHOW,
+    "montrez-moi":TokenType.INTENT_SHOW,
+    "affichez":   TokenType.INTENT_SHOW,
     # ── INTENT_COUNT
     "combien":    TokenType.INTENT_COUNT,
     "compte":     TokenType.INTENT_COUNT,
@@ -135,6 +144,17 @@ KEYWORD_MAP: dict[str, TokenType] = {
     "co2":        TokenType.ATTRIBUTE,
     "no2":        TokenType.ATTRIBUTE,
     "pollution":  TokenType.ATTRIBUTE,  # alias → pm25
+    "polluées":   TokenType.ATTRIBUTE,  # alias → pm25
+    "polluée":    TokenType.ATTRIBUTE,
+    "pollués":    TokenType.ATTRIBUTE,
+    "pollué":     TokenType.ATTRIBUTE,
+    "polluee":    TokenType.ATTRIBUTE,
+    "pollues":    TokenType.ATTRIBUTE,
+    "pollue":     TokenType.ATTRIBUTE,
+    "écologique": TokenType.ATTRIBUTE,  # alias → score_ecolo
+    "ecologique": TokenType.ATTRIBUTE,
+    "économique": TokenType.ATTRIBUTE,  # alias → economie_co2
+    "economique": TokenType.ATTRIBUTE,
     "score":      TokenType.ATTRIBUTE,
     "score_ecolo": TokenType.ATTRIBUTE,
     "nom":        TokenType.ATTRIBUTE,
@@ -196,8 +216,8 @@ STOP_WORDS = {
     "?", "!", ".", ",", ";", ":", "-", "_",
     # Connectors / auxiliary verbs without semantic value
     "avoir", "être", "sont",
-    # Compound status prefixes handled as string literals when after comparators
-    "hors", "service",
+    # Note: "hors" and "service" are NOT stop-words — they form status phrases
+    # handled by lexer preprocessing ("hors service" → "ayant statut est hors_service")
     # misc
     "plus",  # "du plus" is caught as a phrase; standalone "plus" is noise
     # Post-apostrophe split fragments
@@ -233,11 +253,25 @@ ATTRIBUTE_COLUMN_MAP: dict[str, str] = {
     "état":       "statut",
     "etat":       "statut",
     "pollution":  "pm25",
+    "polluées":   "pm25",
+    "polluée":    "pm25",
+    "pollués":    "pm25",
+    "pollué":     "pm25",
+    "polluee":    "pm25",
+    "pollues":    "pm25",
+    "pollue":     "pm25",
     "température": "temperature",
     "humidité":   "humidite",
     "priorité":   "priorite",
     "économie_co2": "economie_co2",
-    "score":      "score_ecolo",
+    "économique": "economie_co2",
+    "economique": "economie_co2",
+    "score":              "score_ecolo",
+    "écologique":         "score_ecolo",
+    "ecologique":         "score_ecolo",
+    "score écologique":   "score_ecolo",
+    "score ecologique":   "score_ecolo",
+    "score_ecolo":        "score_ecolo",
 }
 
 # Table → available columns

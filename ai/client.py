@@ -13,6 +13,38 @@ from typing import Protocol
 
 from config.settings import get_settings
 
+_MOCK_RESPONSES: dict[str, str] = {
+    "rapport": (
+        "## Rapport de qualité de l'air\n\n"
+        "Au cours de la période analysée, trois zones ont dépassé le seuil PM2.5 "
+        "de 25 µg/m³. La Médina et la Zone Industrielle concentrent les pics les plus "
+        "fréquents, avec des dépassements surtout en début de matinée et en fin de journée.\n\n"
+        "### Points clés\n"
+        "- Les capteurs de qualité de l'air restent globalement stables.\n"
+        "- Les zones à fort trafic montrent une hausse régulière des particules fines.\n"
+        "- Une intervention préventive est recommandée sur les capteurs les plus sollicités."
+    ),
+    "action": (
+        '{"actions": [{"priorite": 1, "titre": "Maintenance capteur C-12", '
+        '"urgence": "HAUTE", "detail": "Taux d\'erreur 18% sur les mesures PM2.5.", '
+        '"description": "Inspection et recalibrage immédiats du capteur C-12.", '
+        '"responsable": "technicien", "delai_heures": 2, '
+        '"impact": "Restauration de la couverture de surveillance sur la zone Nord."}], '
+        '"resume": "Deux capteurs nécessitent une intervention immédiate.", '
+        '"niveau_urgence": "ORANGE"}'
+    ),
+    "sql": (
+        "Cette requête retourne les zones dont la concentration moyenne en PM2.5 "
+        "dépasse le seuil réglementaire."
+    ),
+    "validation": (
+        '{"approved": true, "confidence": 0.93, '
+        '"reason": "Les rapports techniques sont cohérents et la clôture est justifiée."}'
+    ),
+    "clarification": "Souhaitez-vous toutes les mesures ou uniquement les PM2.5 ?",
+    "default": "Rapport généré automatiquement par le module IA de Neo-Sousse 2030.",
+}
+
 
 class LLMClient(Protocol):
     def complete(self, prompt: str, max_tokens: int = 1500) -> str: ...
@@ -38,40 +70,19 @@ class OpenAIClient:
 class MockLLMClient:
     """Returns canned responses for testing without API calls."""
 
-    _CANNED: dict[str, str] = {
-        "rapport": (
-            "## Rapport Mock\n\n"
-            "**Résumé Exécutif** : Les données simulées indiquent une qualité d'air acceptable.\n\n"
-            "**Zones Critiques** : Zone Nord (PM2.5 = 42 µg/m³).\n\n"
-            "**Recommandations** :\n1. Réduire le trafic.\n2. Contrôler les émissions industrielles.\n3. Planter des arbres.\n\n"
-            "**Niveau d'Alerte** : ORANGE"
-        ),
-        "actions": (
-            '{"actions": [{'
-            '"priorite": 1, "titre": "Intervention capteur C-001", '
-            '"description": "Capteur hors service depuis 26h", '
-            '"responsable": "technicien", "delai_heures": 2, '
-            '"impact": "Restauration monitoring zone Nord"'
-            '}], "resume": "Situation sous contrôle.", "niveau_urgence": "ORANGE"}'
-        ),
-        "clarification": "Souhaitez-vous (1) toutes les mesures ou (2) uniquement les PM2.5 ?",
-        "validation": '{"approved": true, "confidence": 0.92, "reason": "Intervention conforme aux protocoles."}',
-        "nl_back": "J'ai compris : vous voulez afficher les données demandées.",
-    }
-
     def complete(self, prompt: str, max_tokens: int = 1500) -> str:
         prompt_lower = prompt.lower()
-        if "rapport" in prompt_lower or "résumé" in prompt_lower or "qualité" in prompt_lower:
-            return self._CANNED["rapport"]
-        if "actions" in prompt_lower or "prioritaires" in prompt_lower:
-            return self._CANNED["actions"]
-        if "clarification" in prompt_lower or "ambiguïté" in prompt_lower:
-            return self._CANNED["clarification"]
-        if "approved" in prompt_lower or "valide" in prompt_lower or "intervention" in prompt_lower:
-            return self._CANNED["validation"]
-        if "sql" in prompt_lower or "traduis" in prompt_lower:
-            return self._CANNED["nl_back"]
-        return "Réponse simulée : données traitées avec succès."
+        matchers = (
+            ("clarification", ("clarification", "ambiguïté", "ambiguite")),
+            ("validation", ("json strict", "approved", "validation ia", "intervention peut être validée")),
+            ("action", ("actions", "action", "prioritaires", "recommandations")),
+            ("sql", ("sql", "requête", "traduis cette requête")),
+            ("rapport", ("rapport", "résumé", "qualité", "capteurs", "interventions")),
+        )
+        for key, keywords in matchers:
+            if any(keyword in prompt_lower for keyword in keywords):
+                return _MOCK_RESPONSES[key]
+        return _MOCK_RESPONSES["default"]
 
 
 def get_llm_client() -> LLMClient:

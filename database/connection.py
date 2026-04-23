@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import NullPool
 from contextlib import contextmanager
 from typing import Generator
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session, sessionmaker
 
 from config.settings import get_settings
 
@@ -14,9 +15,13 @@ def get_engine():
     global _engine
     if _engine is None:
         settings = get_settings()
+        database_url = settings.database_url
+        if not database_url:
+            raise RuntimeError("DATABASE_URL not set")
         _engine = create_engine(
-            settings.database_url,
+            database_url,
             pool_pre_ping=True,
+            pool_recycle=300,
             echo=False,
         )
     return _engine
@@ -46,11 +51,13 @@ def get_db() -> Generator[Session, None, None]:
 
 def execute_query(sql: str, params: dict | None = None) -> list[dict]:
     """Execute a raw SQL string and return rows as list of dicts."""
-    with get_db() as session:
-        result = session.execute(text(sql), params or {})
-        if result.returns_rows:
-            columns = list(result.keys())
-            return [dict(zip(columns, row)) for row in result.fetchall()]
+    try:
+        with get_db() as session:
+            result = session.execute(text(sql), params or {})
+            if result.returns_rows:
+                return [dict(row) for row in result.mappings().all()]
+            return []
+    except OperationalError:
         return []
 
 

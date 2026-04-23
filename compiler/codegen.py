@@ -14,6 +14,7 @@ from compiler.ast_nodes import (
     AttributeRef,
 )
 from compiler.errors import SemanticError
+from compiler.tokens import ATTRIBUTE_COLUMN_MAP
 
 
 @dataclass
@@ -38,6 +39,11 @@ class SQLCodeGenerator:
             key = f"p{param_idx[0]}"
             params[key] = value
             return f":{key}"
+
+        # ── Cross-table aggregation shortcut ─────────────────
+        meta = getattr(node, "meta", None) or {}
+        if meta.get("cross_join"):
+            return self._generate_cross_table(node, table, meta, next_param, params)
 
         # ── SELECT clause ────────────────────────────────────
         intent = node.intent
@@ -137,6 +143,64 @@ class SQLCodeGenerator:
         return CompileResult(sql=sql, params=params, description=description)
 
     # ──────────────────────────────────────────────────────────
+
+    def _generate_cross_table(
+        self, node: QueryNode, entity_table: str, meta: dict, next_param, params: dict
+    ) -> "CompileResult":
+        """
+        Generate SQL for cross-table aggregation, e.g.:
+          "les 5 zones les plus polluées"
+          → SELECT zones.nom, AVG(mesures.pm25) AS avg_val
+            FROM zones
+            JOIN capteurs _c ON _c.zone_id = zones.id
+            JOIN mesures ON mesures.capteur_id = _c.id
+            GROUP BY zones.nom
+            ORDER BY AVG(mesures.pm25) DESC
+            LIMIT 5
+        """
+        agg_col   = ATTRIBUTE_COLUMN_MAP.get(meta["agg_col"], meta["agg_col"])
+        agg_table = meta["agg_table"]
+        join_sql  = meta["cross_join"]
+        group_col = meta.get("group_col", "nom")
+        direction = node.orderby.direction if node.orderby else "DESC"
+
+        label = f"{entity_table}.{group_col}"
+        agg_expr = f"AVG({agg_table}.{agg_col})"
+
+        select_clause  = f"SELECT {label}, {agg_expr} AS avg_{agg_col}"
+        from_clause    = f"FROM {entity_table}"
+        join_clause    = join_sql
+        groupby_clause = f"GROUP BY {label}"
+        orderby_clause = f"ORDER BY {agg_expr} {direction}"
+        limit_clause   = ""
+
+        if node.limit:
+            limit_clause = f"LIMIT {node.limit.n}"
+        elif isinstance(node.intent, TopNIntent):
+            limit_clause = f"LIMIT {node.intent.n}"
+
+        where_parts: list[str] = []
+        if node.where:
+            for i, cond in enumerate(node.where.conditions):
+                col = self._col(cond.left)
+                val = cond.right.coerced if cond.right.coerced is not None else cond.right.raw
+                if str(val).lower() in {"null", "nul", "aucun"}:
+                    where_parts.append(f"{col} IS NULL")
+                else:
+                    p = next_param(val)
+                    where_parts.append(f"{col} {cond.op} {p}")
+                if i < len(node.where.operators):
+                    where_parts.append(node.where.operators[i])
+        where_clause = f"WHERE {' '.join(where_parts)}" if where_parts else ""
+
+        parts = [p for p in [select_clause, from_clause, join_clause,
+                              where_clause, groupby_clause, orderby_clause, limit_clause] if p]
+        sql = "\n".join(parts)
+        description = (
+            f"Afficher les {node.intent.n if isinstance(node.intent, TopNIntent) else ''} "
+            f"{entity_table} triés par {agg_col} moyen ({direction})."
+        ).strip()
+        return CompileResult(sql=sql, params=params, description=description)
 
     def _col(self, attr: AttributeRef) -> str:
         if attr.resolved_table and attr.resolved_column:

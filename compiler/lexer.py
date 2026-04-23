@@ -17,6 +17,30 @@ from compiler.tokens import (
 )
 from compiler.errors import LexerError
 
+# Pre-lexer substitutions: replace French status phrases with parseable equivalents.
+# Applied in order, case-insensitively, before tokenization.
+_PREPROCESS: list[tuple[re.Pattern, str]] = [
+    # Only match the spaced form "hors service" — NOT "hors_service" (already a usable literal)
+    (re.compile(r"\bhors\s+service\b",    re.IGNORECASE), "ayant statut est hors_service"),
+    (re.compile(r"\ben\s+panne\b",        re.IGNORECASE), "ayant statut est en_panne"),
+    (re.compile(r"\ben\s+maintenance\b",  re.IGNORECASE), "ayant statut est en_maintenance"),
+    (re.compile(r"\ben\s+route\b",        re.IGNORECASE), "ayant statut est en_route"),
+    (re.compile(r"\ben\s+cours\b",        re.IGNORECASE), "ayant statut est en_cours"),
+    # Status adjectives used as noun qualifiers ("capteurs actifs" → WHERE statut = actif)
+    # Negative lookbehind (?<!est ) prevents re-expanding an already-explicit value.
+    (re.compile(r"(?<!est )actifs?\b",    re.IGNORECASE), "ayant statut est actif"),
+    (re.compile(r"(?<!est )inactifs?\b",  re.IGNORECASE), "ayant statut est inactif"),
+    (re.compile(r"(?<!est )terminés?\b",  re.IGNORECASE), "ayant statut est terminé"),
+    (re.compile(r"(?<!est )signalés?\b",  re.IGNORECASE), "ayant statut est signalé"),
+]
+
+
+def _preprocess(query: str) -> str:
+    """Normalize common French status phrases before lexing."""
+    for pattern, replacement in _PREPROCESS:
+        query = pattern.sub(replacement, query)
+    return query
+
 
 def _normalize(text: str) -> str:
     """Lowercase and strip leading/trailing whitespace."""
@@ -60,6 +84,8 @@ class NLLexer:
         """Return a token list ending with EOF."""
         if not query or not query.strip():
             raise LexerError("La requête est vide.", pos=0)
+
+        query = _preprocess(query)
 
         tokens: list[Token] = []
         words = self._split_into_words(query)

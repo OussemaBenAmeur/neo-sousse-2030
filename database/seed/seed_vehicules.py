@@ -58,4 +58,4 @@ def seed_vehicules():
             },
         )
 
-    print("     ✓ 30 vehicules, 50 trajets")
+    print("     - 30 vehicules, 50 trajets")
