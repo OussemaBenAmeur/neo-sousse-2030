@@ -3,14 +3,14 @@
 from database.connection import execute_query
 
 ZONES = [
-    ("Médina",         "Centre historique",      36.8189, 10.1658, 2.3),
-    ("Zone Industrielle", "Activités industrielles", 36.8050, 10.1900, 8.5),
-    ("Corniche",       "Front de mer",           36.8220, 10.1520, 3.1),
-    ("Aéroport",       "Zone aéroportuaire",     36.8790, 10.2270, 12.0),
-    ("Cité Sportive",  "Quartier résidentiel",   36.8300, 10.1750, 4.2),
-    ("Port",           "Zone portuaire",         36.8100, 10.1600, 5.8),
-    ("Zone Nord",      "Quartier nord",          36.8500, 10.1650, 6.1),
-    ("Zone Sud",       "Quartier sud",           36.7900, 10.1700, 7.3),
+    ("Médina",             "Centre historique de Sousse",                  35.8264, 10.6378, 2.3),
+    ("Zone Industrielle",  "Zone industrielle Sousse Sud",                 35.7850, 10.6550, 8.5),
+    ("Corniche",           "Front de mer et plage Boujaafar",              35.8150, 10.6050, 3.1),
+    ("Aéroport / Enfidha", "Zone aéroportuaire, Sousse Sud",               35.7800, 10.6800, 12.0),
+    ("Cité Sportive",      "Stade olympique et quartier résidentiel",      35.8290, 10.6550, 4.2),
+    ("Port",               "Port de Sousse et zone commerciale",           35.8207, 10.6290, 5.8),
+    ("Zone Nord",          "Quartier nord vers Hammam Sousse",             35.8650, 10.5980, 6.1),
+    ("Zone Sud",           "Quartier sud vers Akouda",                     35.7980, 10.6400, 7.3),
 ]
 
 TECHNICIENS = [
@@ -75,8 +75,8 @@ def seed_capteurs():
                 "install_date": install_date,
                 "fab": fab,
                 "mod": f"Model-{random.choice(['X1','X2','Pro','Elite'])}",
-                "lat": 36.8189 + random.uniform(-0.05, 0.05),
-                "lon": 10.1658 + random.uniform(-0.05, 0.05),
+                "lat": 35.8282 + random.uniform(-0.05, 0.05),
+                "lon": 10.6358 + random.uniform(-0.05, 0.05),
             },
         )
 
